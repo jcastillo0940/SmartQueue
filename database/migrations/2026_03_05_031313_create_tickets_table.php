@@ -6,27 +6,27 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-public function up(): void
+    public function up(): void
     {
-        Schema::create('tickets', function (Blueprint $table) {
+        Schema::create('tickets', function (Blueprint $table): void {
             $table->id();
+            $table->uuid('uuid')->unique();
+            $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('branch_id')->constrained()->cascadeOnDelete();
             $table->foreignId('department_id')->constrained()->cascadeOnDelete();
-            $table->string('number'); // Ej: "C-14"
-            $table->string('source')->default('KIOSK'); // KIOSK, WEB o WHATSAPP
-            $table->string('customer_phone')->nullable(); // Si viene de WhatsApp
-            $table->string('status')->default('WAITING'); // WAITING, CALLING, SERVING, SERVED, NO_SHOW
-            $table->foreignId('called_by')->nullable()->constrained('staff')->nullOnDelete(); // El carnicero que lo llamó
-            $table->integer('call_count')->default(0); // Para saber cuántas veces se le llamó en pantalla
+            $table->foreignId('staff_id')->nullable()->constrained('staff')->nullOnDelete();
+            $table->string('number', 20);
+            $table->enum('status', ['waiting', 'calling', 'serving', 'served', 'no_show', 'cancelled'])->default('waiting');
+            $table->enum('source', ['web', 'whatsapp', 'kiosk'])->default('kiosk');
+            $table->unsignedInteger('call_count')->default(0);
+            $table->timestamp('called_at')->nullable();
+            $table->timestamp('serving_started_at')->nullable();
+            $table->timestamp('served_at')->nullable();
+            $table->timestamp('cancelled_at')->nullable();
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('tickets');

@@ -2,45 +2,52 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Department;
 use App\Models\Branch;
+use App\Models\Department;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class DepartmentController extends Controller
 {
-    public function index($branchId)
+    public function index(int $branch): Response
     {
-        // Cargamos la sucursal con su empresa (tenant) para el breadcrumb
-        $sucursal = Branch::with('tenant')->findOrFail($branchId);
-        $departamentos = Department::where('branch_id', $branchId)->get();
+        $sucursal = Branch::query()->with('tenant')->findOrFail($branch);
+        $departamentos = Department::query()
+            ->where('branch_id', $sucursal->id)
+            ->orderBy('name')
+            ->get();
 
         return Inertia::render('Departments/Index', [
             'sucursal' => $sucursal,
-            'departamentos' => $departamentos
+            'departamentos' => $departamentos,
         ]);
     }
 
-    public function store(Request $request, $branchId)
+    public function store(Request $request, int $branch): RedirectResponse
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'prefix' => 'nullable|string|max:5',
+        $sucursal = Branch::query()->findOrFail($branch);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'prefix' => ['nullable', 'string', 'max:5'],
         ]);
 
-        Department::create([
-            'branch_id' => $branchId,
-            'name' => $request->name,
-            'prefix' => strtoupper($request->prefix),
+        Department::query()->create([
+            'branch_id' => $sucursal->id,
+            'name' => $validated['name'],
+            'prefix' => strtoupper((string) ($validated['prefix'] ?? '')) ?: null,
             'is_active' => true,
         ]);
 
-        return redirect()->back();
+        return back();
     }
 
-    public function destroy($id)
+    public function destroy(int $department): RedirectResponse
     {
-        Department::findOrFail($id)->delete();
-        return redirect()->back();
+        Department::query()->findOrFail($department)->delete();
+
+        return back();
     }
 }
