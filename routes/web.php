@@ -4,7 +4,8 @@ use App\Http\Controllers\BranchController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TenantController;
-use App\Http\Controllers\TicketController;
+use App\Http\Controllers\BranchController;
+use App\Http\Controllers\DepartmentController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -33,13 +34,16 @@ Route::middleware(['auth', 'verified', 'tenant'])->group(function (): void {
     Route::put('/sucursales/{branch}', [BranchController::class, 'update'])->name('branches.update');
     Route::delete('/sucursales/{branch}', [BranchController::class, 'destroy'])->name('branches.destroy');
 
+    // --- MÓDULO SaaS: GESTIÓN DE DEPARTAMENTOS ---
     Route::get('/sucursales/{branch}/departamentos', [DepartmentController::class, 'index'])->name('departments.index');
     Route::post('/sucursales/{branch}/departamentos', [DepartmentController::class, 'store'])->name('departments.store');
     Route::delete('/departamentos/{department}', [DepartmentController::class, 'destroy'])->name('departments.destroy');
 
-    Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
-    Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
-    Route::patch('/tickets/{ticket}', [TicketController::class, 'update'])->name('tickets.update');
+    // --- OPERACIÓN DE TURNOS (BASE ESTADOS) ---
+    Route::post('/tickets/call-next', [TicketController::class, 'callNext'])->name('tickets.call-next');
+    Route::post('/tickets/{ticket}/recall', [TicketController::class, 'recall'])->name('tickets.recall');
+    Route::post('/tickets/{ticket}/no-show', [TicketController::class, 'markNoShow'])->name('tickets.no-show');
+    Route::post('/tickets/{ticket}/serve', [TicketController::class, 'markServed'])->name('tickets.serve');
 });
 
 require __DIR__.'/auth.php';

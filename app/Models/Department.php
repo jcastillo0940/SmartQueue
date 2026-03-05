@@ -9,10 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Department extends Model
 {
-    use HasTenant;
-
     protected $fillable = [
-        'tenant_id',
         'branch_id',
         'name',
         'prefix',
@@ -23,22 +20,17 @@ class Department extends Model
         'is_active' => 'boolean',
     ];
 
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class);
-    }
-
-    public function branch(): BelongsTo
+    public function branch()
     {
         return $this->belongsTo(Branch::class);
     }
 
-    public function tickets(): HasMany
+    public function tickets()
     {
         return $this->hasMany(Ticket::class);
     }
 
-    public function staff(): HasMany
+    public function staff()
     {
         return $this->hasMany(Staff::class);
     }

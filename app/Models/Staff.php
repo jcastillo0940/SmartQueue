@@ -9,22 +9,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Staff extends Model
 {
-    use HasTenant;
-
     protected $fillable = [
-        'tenant_id',
         'department_id',
         'name',
         'qr_hash',
         'status',
     ];
 
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class);
-    }
-
-    public function department(): BelongsTo
+    public function department()
     {
         return $this->belongsTo(Department::class);
     }

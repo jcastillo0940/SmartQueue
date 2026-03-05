@@ -2,68 +2,59 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\HasTenant;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Ticket extends Model
 {
-    use HasTenant;
-
-    public const STATUS_WAITING = 'waiting';
-    public const STATUS_CALLING = 'calling';
-    public const STATUS_SERVING = 'serving';
-    public const STATUS_SERVED = 'served';
-    public const STATUS_NO_SHOW = 'no_show';
-    public const STATUS_CANCELLED = 'cancelled';
-
-    public const SOURCE_WEB = 'web';
-    public const SOURCE_WHATSAPP = 'whatsapp';
-    public const SOURCE_KIOSK = 'kiosk';
+    public const STATUS_WAITING = 'WAITING';
+    public const STATUS_CALLING = 'CALLING';
+    public const STATUS_SERVING = 'SERVING';
+    public const STATUS_SERVED = 'SERVED';
+    public const STATUS_NO_SHOW = 'NO_SHOW';
+    public const STATUS_CANCELLED = 'CANCELLED';
 
     protected $fillable = [
-        'uuid',
-        'tenant_id',
-        'branch_id',
         'department_id',
-        'staff_id',
         'number',
-        'status',
         'source',
+        'customer_phone',
+        'status',
+        'called_by',
+        'assigned_staff_id',
         'call_count',
+        'priority',
         'called_at',
         'serving_started_at',
         'served_at',
+        'no_show_at',
         'cancelled_at',
     ];
 
     protected $casts = [
-        'call_count' => 'integer',
         'called_at' => 'datetime',
         'serving_started_at' => 'datetime',
         'served_at' => 'datetime',
+        'no_show_at' => 'datetime',
         'cancelled_at' => 'datetime',
+        'priority' => 'integer',
+        'call_count' => 'integer',
     ];
 
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class);
-    }
-
-    public function branch(): BelongsTo
-    {
-        return $this->belongsTo(Branch::class);
-    }
-
-    public function department(): BelongsTo
+    public function department()
     {
         return $this->belongsTo(Department::class);
     }
 
-    public function staff(): BelongsTo
+    public function calledBy()
     {
-        return $this->belongsTo(Staff::class);
+        return $this->belongsTo(Staff::class, 'called_by');
+    }
+
+    public function assignedStaff()
+    {
+        return $this->belongsTo(Staff::class, 'assigned_staff_id');
     }
 
     public function scopeActive(Builder $query): Builder
