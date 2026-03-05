@@ -6,6 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class Tenant extends Model
 {
-protected $fillable = ['name'];
-   
+    protected $fillable = [
+        'name',
+        'whatsapp_phone_id',
+        'meta_access_token',
+        'is_active',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
 }

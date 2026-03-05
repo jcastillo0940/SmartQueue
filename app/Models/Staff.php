@@ -6,7 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class Staff extends Model
 {
-public function department()
+    protected $fillable = [
+        'department_id',
+        'name',
+        'qr_hash',
+        'status',
+    ];
+
+    public function department()
     {
         return $this->belongsTo(Department::class);
     }
