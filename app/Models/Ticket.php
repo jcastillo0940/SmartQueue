@@ -1,15 +1,17 @@
 <?php
 
+<?php
+
 namespace App\Models;
 
-use App\Models\Concerns\HasTenant; // 1. Importar el trait
+use App\Models\Concerns\HasTenant;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Ticket extends Model
 {
-    use HasTenant; // 2. Usar el trait
+    use HasTenant;
 
     public const STATUS_WAITING = 'WAITING';
     public const STATUS_CALLING = 'CALLING';
@@ -19,9 +21,9 @@ class Ticket extends Model
     public const STATUS_CANCELLED = 'CANCELLED';
 
     protected $fillable = [
-        'tenant_id', // 3. Añadir tenant_id
+        'tenant_id',
+        'branch_id',
         'department_id',
-        'branch_id', // También es buena práctica tenerlo aquí si está en la migración
         'number',
         'source',
         'customer_phone',
@@ -36,5 +38,38 @@ class Ticket extends Model
         'no_show_at',
         'cancelled_at',
     ];
-    
-    // ... el resto de tus casts y métodos se mantienen igual ...
+
+    protected $casts = [
+        'called_at' => 'datetime',
+        'serving_started_at' => 'datetime',
+        'served_at' => 'datetime',
+        'no_show_at' => 'datetime',
+        'cancelled_at' => 'datetime',
+        'priority' => 'integer',
+        'call_count' => 'integer',
+    ];
+
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
+    }
+
+    public function calledBy()
+    {
+        return $this->belongsTo(Staff::class, 'called_by');
+    }
+
+    public function assignedStaff()
+    {
+        return $this->belongsTo(Staff::class, 'assigned_staff_id');
+    }
+
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->whereIn('status', [
+            self::STATUS_WAITING,
+            self::STATUS_CALLING,
+            self::STATUS_SERVING,
+        ]);
+    }
+}
