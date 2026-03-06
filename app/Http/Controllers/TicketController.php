@@ -11,17 +11,27 @@ use Inertia\Response;
 
 class TicketController extends Controller
 {
-    public function dashboard(): Response
+    public function dashboard(Request $request): Response
     {
-        $turnosActivos = Ticket::query()
+        $query = Ticket::query()
             ->active()
-            ->whereDate('created_at', today())
-            ->orderByDesc('priority')
+            ->whereDate('created_at', today());
+
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+
+        if ($request->filled('department_id')) {
+            $query->where('department_id', $request->department_id);
+        }
+
+        $turnosActivos = $query->orderByDesc('priority')
             ->orderBy('created_at', 'asc')
             ->get();
 
         return Inertia::render('Dashboard', [
             'turnos' => $turnosActivos,
+            'filters' => $request->only(['branch_id', 'department_id']),
         ]);
     }
 
