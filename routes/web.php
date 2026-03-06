@@ -3,6 +3,7 @@
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\StaffController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\TenantController;
 use Illuminate\Foundation\Application;
@@ -37,6 +38,12 @@ Route::middleware(['auth', 'verified', 'tenant'])->group(function (): void {
     Route::get('/sucursales/{branch}/departamentos', [DepartmentController::class, 'index'])->name('departments.index');
     Route::post('/sucursales/{branch}/departamentos', [DepartmentController::class, 'store'])->name('departments.store');
     Route::delete('/departamentos/{department}', [DepartmentController::class, 'destroy'])->name('departments.destroy');
+
+    // --- MÓDULO SaaS: GESTIÓN DE STAFF ---
+    Route::get('/departamentos/{department}/staff', [StaffController::class, 'index'])->name('staff.index');
+    Route::post('/departamentos/{department}/staff', [StaffController::class, 'store'])->name('staff.store');
+    Route::put('/staff/{staff}', [StaffController::class, 'update'])->name('staff.update');
+    Route::delete('/staff/{staff}', [StaffController::class, 'destroy'])->name('staff.destroy');
 
     // --- OPERACIÓN DE TURNOS (BASE ESTADOS) ---
     Route::post('/tickets/call-next', [TicketController::class, 'callNext'])->name('tickets.call-next');
