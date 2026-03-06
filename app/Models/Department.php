@@ -1,17 +1,18 @@
 <?php
+
 namespace App\Models;
 
-use App\Models\Concerns\HasTenant; // 1. Importar el trait
+use App\Models\Concerns\HasTenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Department extends Model
 {
-    use HasTenant; // 2. Usar el trait
+    use HasTenant;
 
     protected $fillable = [
-        'tenant_id', // 3. Añadir tenant_id
+        'tenant_id',
         'branch_id',
         'name',
         'prefix',
