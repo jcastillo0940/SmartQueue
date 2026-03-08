@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
+use App\Models\Department;
 use App\Models\Ticket;
+use App\Models\Staff;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,7 +16,17 @@ class TicketController extends Controller
 {
     public function dashboard(Request $request): Response
     {
+        $branches = Branch::all();
+        $departments = $request->filled('branch_id') 
+            ? Department::where('branch_id', $request->branch_id)->get() 
+            : [];
+        
+        $staff = $request->filled('department_id')
+            ? Staff::where('department_id', $request->department_id)->get()
+            : [];
+
         $query = Ticket::query()
+            ->with(['department', 'calledBy'])
             ->active()
             ->whereDate('created_at', today());
 
@@ -31,15 +44,78 @@ class TicketController extends Controller
 
         return Inertia::render('Dashboard', [
             'turnos' => $turnosActivos,
-            'filters' => $request->only(['branch_id', 'department_id']),
+            'branches' => $branches,
+            'departments' => $departments,
+            'staffList' => $staff,
+            'filters' => $request->only(['branch_id', 'department_id', 'staff_id']),
         ]);
+    }
+
+    // --- VISTA PÚBLICA PARA TV/MONITOR ---
+    public function publicDisplay(Branch $branch)
+    {
+        // Obtenemos los últimos tickets llamados o en atención
+        $llamados = Ticket::query()
+            ->with(['department', 'calledBy'])
+            ->where('branch_id', $branch->id)
+            ->whereIn('status', [Ticket::STATUS_CALLING, Ticket::STATUS_SERVING])
+            ->whereDate('created_at', today())
+            ->orderByDesc('called_at')
+            ->limit(5)
+            ->get();
+
+        return Inertia::render('PublicDisplay/Index', [
+            'branch' => $branch,
+            'llamados' => $llamados
+        ]);
+    }
+
+    public function kiosk(Branch $branch)
+    {
+        $departments = $branch->departments()->where('is_active', true)->get();
+
+        return Inertia::render('Kiosk/Index', [
+            'branch' => $branch,
+            'departments' => $departments,
+        ]);
+    }
+
+    public function store(Request $request, Branch $branch)
+    {
+        $validated = $request->validate([
+            'department_id' => ['required', 'integer', 'exists:departments,id'],
+            'customer_phone' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        $department = Department::findOrFail($validated['department_id']);
+
+        $todayTicketsCount = Ticket::query()
+            ->where('department_id', $department->id)
+            ->whereDate('created_at', today())
+            ->count();
+
+        $nextNumber = $todayTicketsCount + 1;
+        $ticketNumber = $department->prefix . '-' . str_pad($nextNumber, 2, '0', STR_PAD_LEFT);
+
+        $ticket = Ticket::create([
+            'tenant_id' => $branch->tenant_id,
+            'branch_id' => $branch->id,
+            'department_id' => $department->id,
+            'number' => $ticketNumber,
+            'source' => 'KIOSK',
+            'customer_phone' => $validated['customer_phone'] ?? null,
+            'status' => Ticket::STATUS_WAITING,
+            'priority' => 0,
+        ]);
+
+        return redirect()->back()->with('success', "Turno generado: {$ticket->number}");
     }
 
     public function callNext(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'department_id' => ['required', 'integer', 'exists:departments,id'],
-            'staff_id' => ['nullable', 'integer', 'exists:staff,id'],
+            'staff_id' => ['required', 'integer', 'exists:staff,id'],
         ]);
 
         DB::transaction(function () use ($validated): void {
@@ -57,8 +133,8 @@ class TicketController extends Controller
 
             $ticket->update([
                 'status' => Ticket::STATUS_CALLING,
-                'called_by' => $validated['staff_id'] ?? null,
-                'assigned_staff_id' => $validated['staff_id'] ?? null,
+                'called_by' => $validated['staff_id'],
+                'assigned_staff_id' => $validated['staff_id'],
                 'call_count' => $ticket->call_count + 1,
                 'called_at' => now(),
             ]);

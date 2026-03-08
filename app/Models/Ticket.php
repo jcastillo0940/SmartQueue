@@ -1,13 +1,12 @@
 <?php
 
-<?php
-
 namespace App\Models;
 
 use App\Models\Concerns\HasTenant;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class Ticket extends Model
 {
@@ -39,15 +38,16 @@ class Ticket extends Model
         'cancelled_at',
     ];
 
-    protected $casts = [
-        'called_at' => 'datetime',
-        'serving_started_at' => 'datetime',
-        'served_at' => 'datetime',
-        'no_show_at' => 'datetime',
-        'cancelled_at' => 'datetime',
-        'priority' => 'integer',
-        'call_count' => 'integer',
-    ];
+    // Generar UUID automáticamente al crear
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($model) {
+            if (empty($model->uuid)) {
+                $model->uuid = (string) Str::uuid();
+            }
+        });
+    }
 
     public function department()
     {
@@ -57,11 +57,6 @@ class Ticket extends Model
     public function calledBy()
     {
         return $this->belongsTo(Staff::class, 'called_by');
-    }
-
-    public function assignedStaff()
-    {
-        return $this->belongsTo(Staff::class, 'assigned_staff_id');
     }
 
     public function scopeActive(Builder $query): Builder

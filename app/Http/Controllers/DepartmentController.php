@@ -35,6 +35,7 @@ class DepartmentController extends Controller
         ]);
 
         Department::query()->create([
+            'tenant_id' => $sucursal->tenant_id,
             'branch_id' => $sucursal->id,
             'name' => $validated['name'],
             'prefix' => strtoupper((string) ($validated['prefix'] ?? '')) ?: null,

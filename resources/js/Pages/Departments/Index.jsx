@@ -1,7 +1,7 @@
 import React from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link, router } from '@inertiajs/react';
-import { ChevronLeft, Plus, Hash, Trash2, Layers } from 'lucide-react';
+import { ChevronLeft, Plus, Hash, Trash2, Layers, Users } from 'lucide-react';
 
 export default function Index({ auth, sucursal, departamentos }) {
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -41,11 +41,11 @@ export default function Index({ auth, sucursal, departamentos }) {
                             <form onSubmit={submit} className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">Nombre</label>
-                                    <input type="text" value={data.name} onChange={e => setData('name', e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none bg-gray-50/50" placeholder="Ej. Carnicería o Cajas" required />
+                                    <input type="text" value={data.name} onChange={e => setData('name', e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-1">Prefijo (Turnos)</label>
-                                    <input type="text" value={data.prefix} onChange={e => setData('prefix', e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none bg-gray-50/50" placeholder="Ej. C o A" maxLength="2" />
+                                    <input type="text" value={data.prefix} onChange={e => setData('prefix', e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500" />
                                     <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold">Generará turnos como: {data.prefix || '?'}-01</p>
                                 </div>
                                 <button disabled={processing} className="w-full py-3 px-4 rounded-xl font-bold text-white bg-gray-900 hover:bg-gray-800 transition-all">
@@ -60,7 +60,7 @@ export default function Index({ auth, sucursal, departamentos }) {
                         <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {departamentos.length > 0 ? departamentos.map((dept) => (
-                                    <div key={dept.id} className="p-5 rounded-2xl border border-gray-100 hover:border-emerald-100 hover:bg-emerald-50/30 transition-all group">
+                                    <div key={dept.id} className="p-5 rounded-2xl border border-gray-100 hover:border-emerald-100 hover:bg-emerald-50/30 transition-all group flex flex-col">
                                         <div className="flex justify-between items-start mb-4">
                                             <div className="w-10 h-10 rounded-lg bg-white shadow-sm border border-gray-100 flex items-center justify-center text-emerald-500 font-bold">
                                                 {dept.prefix || '#'}
@@ -70,7 +70,17 @@ export default function Index({ auth, sucursal, departamentos }) {
                                             </button>
                                         </div>
                                         <h4 className="font-bold text-gray-800 text-lg leading-tight">{dept.name}</h4>
-                                        <p className="text-xs text-gray-400 mt-1 uppercase tracking-widest font-bold">Sucursal: {sucursal.name}</p>
+                                        <p className="text-xs text-gray-400 mt-1 uppercase tracking-widest font-bold mb-4">Sucursal: {sucursal.name}</p>
+                                        
+                                        <div className="pt-4 border-t border-gray-100 mt-auto">
+                                            <Link 
+                                                href={route('staff.index', dept.id)} 
+                                                className="flex items-center gap-2 text-sm font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
+                                            >
+                                                <Users size={16} />
+                                                Gestionar Personal
+                                            </Link>
+                                        </div>
                                     </div>
                                 )) : (
                                     <div className="col-span-full py-12 text-center text-gray-400 font-medium italic">

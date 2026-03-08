@@ -1,150 +1,201 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
-import { Users, Ticket, Clock, TrendingUp, MonitorSmartphone, Smartphone, UserRound } from 'lucide-react';
+import { Head, useForm, router } from '@inertiajs/react';
+import { Users, Play, SkipForward, CheckCircle, UserX, Building2, LayoutGrid, Clock } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
-export default function Dashboard({ auth, turnos = [] }) {
-    
-    // Función para darle color a la etiqueta del estado
-    const getStatusBadge = (status) => {
-        switch(status) {
-            case 'WAITING':
-                return <span className="px-3 py-1 text-xs font-semibold rounded-full bg-amber-50 text-amber-600 border border-amber-200">En Espera</span>;
-            case 'CALLING':
-                return <span className="px-3 py-1 text-xs font-semibold rounded-full bg-blue-50 text-blue-600 border border-blue-200">Llamando...</span>;
-            case 'SERVING':
-                return <span className="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200">En Atención</span>;
-            default:
-                return <span className="px-3 py-1 text-xs font-semibold rounded-full bg-gray-50 text-gray-600 border border-gray-200">{status}</span>;
+export default function Dashboard({ auth, turnos, branches, departments, staffList, filters }) {
+    // Estado local para los selectores de contexto
+    const { data, setData, post, processing } = useForm({
+        branch_id: filters.branch_id || '',
+        department_id: filters.department_id || '',
+        staff_id: filters.staff_id || '',
+    });
+
+    // Actualizar la vista cuando cambian los selectores
+    const handleContextChange = (key, value) => {
+        const newData = { ...data, [key]: value };
+        if (key === 'branch_id') newData.department_id = ''; // Resetear depto si cambia sucursal
+        
+        setData(newData);
+        
+        // Recargar la página con los nuevos filtros
+        router.get(route('dashboard'), {
+            branch_id: newData.branch_id,
+            department_id: newData.department_id,
+        }, { preserveState: true });
+    };
+
+    // Acciones operativas
+    const callNext = () => {
+        if (!data.department_id || !data.staff_id) {
+            alert('Por favor seleccione Departamento y Agente antes de llamar.');
+            return;
         }
+        post(route('tickets.call-next'));
     };
 
-    // Función para el icono del origen (Kiosco o WhatsApp)
-    const getSourceIcon = (source) => {
-        if (source === 'WHATSAPP') return <Smartphone size={16} className="text-green-500" />;
-        return <MonitorSmartphone size={16} className="text-gray-400" />;
+    const handleAction = (routePath, id) => {
+        router.post(route(routePath, id), { staff_id: data.staff_id });
     };
+
+    // Separar el ticket activo (el que está llamando o atendiendo el staff actual)
+    const ticketActivo = turnos.find(t => 
+        (t.status === 'CALLING' || t.status === 'SERVING') && 
+        t.assigned_staff_id === parseInt(data.staff_id)
+    );
+
+    // Turnos en espera en la cola
+    const colaEspera = turnos.filter(t => t.status === 'WAITING');
 
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header="Dashboard General"
+            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Consola de Atención</h2>}
         >
-            <Head title="Dashboard" />
+            <Head title="Panel de Control" />
 
             <div className="py-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-                
-                {/* 1. TARJETAS DE MÉTRICAS (KPIs) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 flex items-center gap-4 transition-transform hover:-translate-y-1">
-                        <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center">
-                            <Ticket size={28} strokeWidth={1.5} />
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-gray-400">Turnos Hoy</p>
-                            <h3 className="text-3xl font-bold text-gray-800">{turnos.length}</h3>
-                        </div>
+                {/* SELECTORES DE CONTEXTO */}
+                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label className="block text-xs font-black text-gray-400 uppercase mb-2">Sucursal</label>
+                        <select 
+                            value={data.branch_id} 
+                            onChange={e => handleContextChange('branch_id', e.target.value)}
+                            className="w-full bg-gray-50 border-none rounded-2xl font-bold text-gray-700 focus:ring-2 focus:ring-emerald-500"
+                        >
+                            <option value="">Seleccione Sucursal</option>
+                            {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                        </select>
                     </div>
-
-                    <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 flex items-center gap-4 transition-transform hover:-translate-y-1">
-                        <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center">
-                            <Users size={28} strokeWidth={1.5} />
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-gray-400">En Espera</p>
-                            <h3 className="text-3xl font-bold text-gray-800">
-                                {turnos.filter(t => t.status === 'WAITING').length}
-                            </h3>
-                        </div>
+                    <div>
+                        <label className="block text-xs font-black text-gray-400 uppercase mb-2">Departamento</label>
+                        <select 
+                            value={data.department_id} 
+                            onChange={e => handleContextChange('department_id', e.target.value)}
+                            disabled={!data.branch_id}
+                            className="w-full bg-gray-50 border-none rounded-2xl font-bold text-gray-700 focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
+                        >
+                            <option value="">Seleccione Departamento</option>
+                            {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                        </select>
                     </div>
-
-                    <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 flex items-center gap-4 transition-transform hover:-translate-y-1">
-                        <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-500 flex items-center justify-center">
-                            <Clock size={28} strokeWidth={1.5} />
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-gray-400">Tiempo Prom.</p>
-                            <h3 className="text-3xl font-bold text-gray-800">-- min</h3>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 flex items-center gap-4 transition-transform hover:-translate-y-1">
-                        <div className="w-14 h-14 rounded-2xl bg-purple-50 text-purple-500 flex items-center justify-center">
-                            <TrendingUp size={28} strokeWidth={1.5} />
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-gray-400">Satisfacción</p>
-                            <h3 className="text-3xl font-bold text-gray-800">100%</h3>
-                        </div>
+                    <div>
+                        <label className="block text-xs font-black text-gray-400 uppercase mb-2">Agente (Usted)</label>
+                        <select 
+                            value={data.staff_id} 
+                            onChange={e => setData('staff_id', e.target.value)}
+                            disabled={!data.department_id}
+                            className="w-full bg-gray-50 border-none rounded-2xl font-bold text-gray-700 focus:ring-2 focus:ring-emerald-500 disabled:opacity-50"
+                        >
+                            <option value="">Identifíquese</option>
+                            {staffList.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
                     </div>
                 </div>
 
-                {/* 2. TABLA DE TURNOS ACTIVOS */}
-                <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 overflow-hidden">
-                    <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                        <h3 className="text-xl font-bold text-gray-800 tracking-tight">Fila Actual (Turnos Activos)</h3>
-                        <span className="bg-emerald-50 text-emerald-600 text-xs font-bold px-3 py-1 rounded-full">Actualización en vivo</span>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    {/* PANEL DE LLAMADO (IZQUIERDA) */}
+                    <div className="lg:col-span-4 space-y-6">
+                        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 text-center">
+                            <h3 className="text-gray-400 font-bold uppercase tracking-widest text-xs mb-6">Atención Actual</h3>
+                            
+                            {ticketActivo ? (
+                                <div className="space-y-6">
+                                    <div className="bg-emerald-50 py-10 rounded-[2rem] border-2 border-emerald-100">
+                                        <span className="text-6xl font-black text-emerald-700 tracking-tighter">{ticketActivo.number}</span>
+                                        <p className="text-emerald-600 font-bold mt-2 uppercase text-xs tracking-widest">{ticketActivo.status}</p>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button 
+                                            onClick={() => handleAction('tickets.recall', ticketActivo.id)}
+                                            className="flex flex-col items-center justify-center p-4 bg-amber-50 text-amber-600 rounded-2xl font-bold hover:bg-amber-100 transition-colors"
+                                        >
+                                            <SkipForward size={24} className="mb-1" /> Re-llamar
+                                        </button>
+                                        <button 
+                                            onClick={() => handleAction('tickets.no-show', ticketActivo.id)}
+                                            className="flex flex-col items-center justify-center p-4 bg-red-50 text-red-600 rounded-2xl font-bold hover:bg-red-100 transition-colors"
+                                        >
+                                            <UserX size={24} className="mb-1" /> No vino
+                                        </button>
+                                        <button 
+                                            onClick={() => handleAction('tickets.serve', ticketActivo.id)}
+                                            className="col-span-2 flex items-center justify-center gap-2 p-5 bg-emerald-600 text-white rounded-2xl font-black text-lg hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"
+                                        >
+                                            <CheckCircle size={24} /> FINALIZAR ATENCIÓN
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="py-12 flex flex-col items-center">
+                                    <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-200 mb-4">
+                                        <Play size={40} />
+                                    </div>
+                                    <p className="text-gray-400 font-bold">Sin turno activo</p>
+                                    <button 
+                                        disabled={processing || !data.staff_id || colaEspera.length === 0}
+                                        onClick={callNext}
+                                        className="mt-8 w-full py-6 bg-gray-900 text-white rounded-[2rem] font-black text-xl hover:bg-gray-800 transition-all disabled:opacity-30 active:scale-95"
+                                    >
+                                        LLAMAR SIGUIENTE
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                    
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-gray-50/50 text-gray-500 text-sm">
-                                    <th className="px-6 py-4 font-semibold">Turno</th>
-                                    <th className="px-6 py-4 font-semibold">Cliente / Origen</th>
-                                    <th className="px-6 py-4 font-semibold">Estado</th>
-                                    <th className="px-6 py-4 font-semibold">Hora de Emisión</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
-                                {turnos.length > 0 ? (
-                                    turnos.map((turno) => (
-                                        <tr key={turno.id} className="hover:bg-gray-50/50 transition-colors">
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center font-bold text-gray-700">
-                                                        {turno.number.charAt(0)}
-                                                    </div>
-                                                    <span className="font-bold text-gray-800 text-lg">{turno.number}</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col">
-                                                    <span className="text-sm font-medium text-gray-800 flex items-center gap-2">
-                                                        <UserRound size={14} className="text-gray-400"/>
-                                                        {turno.client_name || 'Cliente General'}
-                                                    </span>
-                                                    <span className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-                                                        {getSourceIcon(turno.source)} {turno.source}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                {getStatusBadge(turno.status)}
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-gray-500 font-medium">
-                                                {new Date(turno.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                            </td>
+
+                    {/* COLA DE ESPERA (DERECHA) */}
+                    <div className="lg:col-span-8">
+                        <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden">
+                            <div className="p-8 border-b border-gray-50 flex justify-between items-center">
+                                <h3 className="font-black text-xl text-gray-800 flex items-center gap-2">
+                                    <Clock className="text-emerald-500" /> Cola de Espera
+                                </h3>
+                                <span className="bg-emerald-100 text-emerald-700 px-4 py-1 rounded-full font-black text-sm">
+                                    {colaEspera.length} CLIENTES
+                                </span>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-gray-50/50">
+                                        <tr>
+                                            <th className="px-8 py-4 text-left text-xs font-black text-gray-400 uppercase tracking-widest">Turno</th>
+                                            <th className="px-8 py-4 text-left text-xs font-black text-gray-400 uppercase tracking-widest">Departamento</th>
+                                            <th className="px-8 py-4 text-left text-xs font-black text-gray-400 uppercase tracking-widest">Espera</th>
+                                            <th className="px-8 py-4 text-right text-xs font-black text-gray-400 uppercase tracking-widest">Estado</th>
                                         </tr>
-                                    ))
-                                ) : (
-                                    /* ESTADO VACÍO (Cuando no hay nadie en la fila) */
-                                    <tr>
-                                        <td colSpan="4" className="px-6 py-16 text-center">
-                                            <div className="flex flex-col items-center justify-center text-gray-400">
-                                                <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-                                                    <Ticket size={32} className="text-gray-300" />
-                                                </div>
-                                                <p className="text-lg font-medium text-gray-600">No hay clientes en espera</p>
-                                                <p className="text-sm mt-1">Los nuevos turnos aparecerán aquí automáticamente.</p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {colaEspera.map((turno) => (
+                                            <tr key={turno.id} className="hover:bg-gray-50/50 transition-colors">
+                                                <td className="px-8 py-6">
+                                                    <span className="text-2xl font-black text-gray-800 tracking-tighter">{turno.number}</span>
+                                                </td>
+                                                <td className="px-8 py-6">
+                                                    <span className="font-bold text-gray-600">{turno.department.name}</span>
+                                                </td>
+                                                <td className="px-8 py-6">
+                                                    <span className="text-gray-400 text-sm font-medium">Hace {Math.floor((new Date() - new Date(turno.created_at))/60000)} min</span>
+                                                </td>
+                                                <td className="px-8 py-6 text-right">
+                                                    <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest">En Espera</span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {colaEspera.length === 0 && (
+                                            <tr>
+                                                <td colSpan="4" className="px-8 py-20 text-center">
+                                                    <p className="text-gray-400 font-bold italic">No hay clientes esperando en este momento.</p>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
             </div>
         </AuthenticatedLayout>
     );
